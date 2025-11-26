@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>❖班级考勤系统 V2.0[bata] - Xiaoran9116</title>
+    <style>
+        /*李琪琪考勤签到系统改版-xiaoran9116*/
+        :root { --primary-color: #1a2a6c; --accent-color: #fdbb2d; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; }
+        
+        body { 
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d); 
+            background-size: cover; background-position: center;
+            color: white; height: 100vh; display: flex; flex-direction: column; padding: 10px; overflow: hidden; position: relative; 
+        }
+
+        /* --- 1. 开屏动画 --- */
+        #intro-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 9999; 
+            display: flex; justify-content: center; align-items: center; flex-direction: column;
+            animation: fadeOut 1s ease-in-out 3.5s forwards;
+            background-size: cover; background-position: center;
+        }
+        .intro-content { text-align: center; animation: zoomIn 1.5s cubic-bezier(0.25, 1, 0.5, 1); position: relative; padding: 40px; }
+        .intro-icon { font-size: 5rem; margin-bottom: 20px; display: block; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.8); }
+        .intro-text { 
+            font-size: 2.5rem; letter-spacing: 2px; font-weight: 800; /* 粗体 */
+            background: linear-gradient(90deg, #fff, #a8c0ff); -webkit-background-clip: text; color: transparent;
+            font-family: 'Segoe UI', sans-serif; text-transform: uppercase;
+        }
+        .intro-sub {
+            position: absolute; bottom: -20px; right: 20px;
+            font-size: 0.9rem; color: rgba(255,255,255,0.6); font-family: monospace; letter-spacing: 1px;
+        }
+        @keyframes zoomIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+
+        /* --- 2. 主界面布局 --- */
+        .header { text-align: center; margin-bottom: 10px; flex-shrink: 0; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .main-container { display: flex; flex: 1; gap: 15px; overflow: hidden; height: calc(100vh - 120px); }
+        
+        /* 左侧面板 */
+        .left-panel { flex: 0 0 300px; display: flex; flex-direction: column; gap: 15px; }
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(15px); 
+            border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.2); 
+            padding: 15px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        .time { font-size: 3rem; font-weight: 300; line-height: 1.1; margin-bottom: 5px; }
+        .date-group { opacity: 0.9; font-size: 1rem; }
+        .announcement { margin-top:10px; text-align:left; font-size:0.95rem; color: #fff; min-height:48px; }
+        .announcement .ann-title { font-weight:700; margin-bottom:6px; }
+        /* 考勤统计 */
+        .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1); font-size: 0.95rem; }
+        .deadline-list { margin-top: 10px; flex: 1; overflow-y: auto; text-align: left; }
+        .deadline-item { padding: 4px 8px; font-size: 0.85rem; color: rgba(255,255,255,0.8); }
+
+        /* 名单区域 */
+        .names-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .section-title { font-size: 1.3rem; margin-bottom: 12px; text-align: center; padding-bottom: 6px; border-bottom: 2px solid rgba(255, 255, 255, 0.3); }
+        .names-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; overflow-y: auto; padding: 5px; flex: 1; }
+        .names-grid::-webkit-scrollbar { width: 6px; }
+        .names-grid::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.1); border-radius: 3px; }
+        .names-grid::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 3px; }
+        
+        
+        .name-card {
+            background: rgba(255, 255, 255, 0.2); 
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            padding: 0 10px;
+            height: 55px;
+            display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative; overflow: hidden;
+            font-size: 1rem; letter-spacing: 1px;
+        }
+        .name-card:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.3); }
+        /* 学生卡片 */
+        .name-card { background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(5px); border-radius: 8px; padding: 10px 6px; text-align: center; cursor: pointer; transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.9rem; position: relative; display: flex; justify-content: center; align-items: center; min-height: 50px; }
+        .name-card:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.3); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+        .name-card.checked { background: rgba(46, 204, 113, 0.4); color: white; }
+        .name-card.late { background: rgba(231, 76, 60, 0.4); color: white; cursor: not-allowed; }
+        .checkmark { position: absolute; right: 4px; top: 4px; font-size: 0.9rem; color: #2ecc71; }
+        .late-text { position: absolute; right: 4px; bottom: 3px; font-size: 0.65rem; color: #e74c3c; }
+        
+        /* 签到后：白色不透明 */
+        .name-card.checked {
+            background: #ffffff !important; /* 纯白 */
+            color: #333 !important; /* 深色字体 */
+            opacity: 1;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            border: none;
+            font-weight: bold;
+        }
+        /* 迟到样式 */
+        .name-card.late {
+            background: rgba(231, 76, 60, 0.8) !important;
+            color: white; border: 1px solid #c0392b;
+            cursor: not-allowed;
+        }
+        
+        .card-icon { font-size: 1.2rem; font-weight: bold; }
+        .checked .card-icon { color: #27ae60; } /* 绿色对勾 */
+
+        .names-grid.fullscreen-mode .name-card {
+            height: 80px; /* 增加卡片高度 */
+            font-size: 1.5rem; /* 增大字体 */
+        }
+        
+        /* 底部控制栏 */
+        .footer { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
+        .admin-btn { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; color: #ccc; cursor: pointer; transition: 0.2s; font-size: 0.8rem; }
+        .admin-btn:hover { background: rgba(0,0,0,0.5); color: #fff; }
+
+        /* 水印 */
+        #watermark { position: fixed; bottom: 5px; right: 10px; font-size: 0.7rem; color: rgba(255,255,255,0.3); font-family: 'Consolas', monospace; pointer-events: none; }
+
+        /* --- 4. 结束结算画面 (End Screen) --- */
+        #end-screen {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px);
+            z-index: 8000; flex-direction: column; justify-content: center; align-items: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+        .end-title { font-size: 3rem; color: #fdbb2d; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 5px; border-bottom: 2px solid #fdbb2d; padding-bottom: 10px; }
+        .late-list-container { 
+            background: rgba(255,255,255,0.05); padding: 30px; border-radius: 15px; 
+            max-width: 600px; width: 80%; text-align: center; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .late-list-title { font-size: 1.2rem; color: #e74c3c; margin-bottom: 15px; }
+        .late-names { font-size: 1.1rem; line-height: 1.8; color: #fff; }
+        .close-end-btn { margin-top: 30px; padding: 10px 30px; background: transparent; border: 1px solid #fff; color: #fff; border-radius: 50px; cursor: pointer; transition: 0.3s; }
+        .close-end-btn:hover { background: #fff; color: #000; }
+
+        /* --- 5. 后台管理全屏界面 --- */
+        #admin-page {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #f4f6f9; color: #333; z-index: 9000;
+            flex-direction: column;
+        }
+        .admin-header { background: #1a2a6c; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .admin-body { flex: 1; display: flex; overflow: hidden; }
+        .admin-sidebar { width: 200px; background: white; padding: 20px 0; border-right: 1px solid #eee; }
+        .tab-btn { display: block; width: 100%; text-align: left; padding: 12px 20px; border: none; background: transparent; cursor: pointer; color: #666; font-size: 1rem; border-left: 4px solid transparent; }
+        .tab-btn.active { background: #eef2f7; color: #1a2a6c; border-left-color: #1a2a6c; font-weight: bold; }
+        .admin-content { flex: 1; padding: 30px; overflow-y: auto; }
+        .settings-group { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .settings-title { font-size: 1.2rem; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; color: #2c3e50; }
+        
+        /* 表单元素 */
+        .form-row { display: flex; gap: 15px; margin-bottom: 15px; align-items: center; }
+        .form-control { padding: 8px; border: 1px solid #ddd; border-radius: 4px; flex: 1; }
+        .check-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+        .check-item { display: flex; align-items: center; gap: 5px; font-size: 0.9rem; cursor: pointer; padding: 5px; border-radius: 4px; transition: 0.2s; }
+        .check-item:hover { background: #f0f0f0; }
+        .btn { padding: 8px 20px; border-radius: 4px; border: none; cursor: pointer; font-size: 0.9rem; }
+        .btn-save { background: #1a2a6c; color: white; }
+        .file-upload { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; margin-bottom: 10px; cursor: pointer; }
+
+        /* Login Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9500; display: none; justify-content: center; align-items: center; }
+        .login-box { background: white; padding: 30px; border-radius: 10px; color: #333; width: 320px; text-align: center; }
+        .login-input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; }
+
+        /* 报表页面的样式（新标签页会用到） */
+        .report-body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; padding: 20px; background-color: #f8f9fa; color: #333; }
+        .report-title { color: #1a2a6c; border-bottom: 3px solid #fdbb2d; padding-bottom: 10px; margin-bottom: 20px; }
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .report-table th, .report-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .report-table th { background-color: #e9ecef; color: #1a2a6c; font-weight: bold; }
+        .late-row { background-color: #fdd; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <div id="intro-overlay">
+        <div class="intro-content">
+            <span class="intro-icon">❖</span>
+            <div class="intro-text">Unstained science of technology</div>
+            <div class="intro-sub">- Xiaoran9116</div>
+        </div>
+    </div>
+
+    <div id="end-screen">
+        <div class="end-title">本次考勤已结束</div>
+        <div class="late-list-container">
+            <div class="late-list-title">⚠ 迟到/未到人员名单</div>
+            <div class="late-names" id="endScreenNames">无</div>
+        </div>
+        <button class="close-end-btn" onclick="document.getElementById('end-screen').style.display='none'">关闭画面</button>
+    </div>
+
+    <div id="watermark">- Xiaoran9116</div>
+
+    <div class="header">
+        <h1>班级考勤时钟系统</h1>
+        <div class="status" id="attendanceStatus">初始化...</div>
+    </div>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <div class="glass-panel">
+                <div class="time" id="time">00:00:00</div>
+                <div class="date-group">
+                    <div id="date">YYYY/MM/DD</div>
+                    <div id="weekday">Monday</div>
+                </div>
+                <div class="announcement" id="announcement">
+                    <div class="ann-title">公告</div>
+                    <div id="announcementText">修复全员迟到bug 截至v2.0版本代码长度来到912行
+                   </div>
+                </div>
+            </div>         
+            <div class="glass-panel" style="flex: 1; display: flex; flex-direction: column; text-align: left;">
+                <div class="info-row"><span>应到:</span> <strong id="totalCount">0</strong></div>
+                <div class="info-row"><span>实到:</span> <strong id="presentCount" style="color:#2ecc71">0</strong></div>
+                <div class="info-row"><span>迟到:</span> <strong id="lateCount" style="color:#e74c3c">0</strong></div>
+                
+                <div style="margin-top: 15px; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom:5px;">考勤时段</div>
+                <div class="deadline-list" id="deadlineList">
+                </div>
+            </div>
+        </div>
+
+        <div class="names-section">
+            <div class="names-grid" id="namesGrid">
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div style="font-size: 0.8rem; opacity: 0.7;">System Ready</div>
+        <div style="display: flex; gap: 10px; align-items:center;">
+            <button class="admin-btn" onclick="openAttendanceReport()">查看迟到名单</button>
+            <button class="admin-btn" onclick="document.getElementById('loginModal').style.display='flex'">管理后台</button>                    
+            <button class="admin-btn" id="themeBtn" onclick="cycleTheme()">切换主题</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="loginModal">
+        <div class="login-box">
+            <h3>管理员验证</h3>
+            <input type="text" id="uName" class="login-input" placeholder="用户名">
+            <input type="password" id="pWord" class="login-input" placeholder="密码">
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn" style="background:#ccc" onclick="document.getElementById('loginModal').style.display='none'">取消</button>
+                <button class="btn btn-save" onclick="handleLogin()">登录</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-page">
+        <div class="admin-header">
+            <h3>⚙️ 考勤系统后台管理 V:2.0[Bata]</h3>
+            <button class="btn" style="background: rgba(255,255,255,0.2); color:white;" onclick="closeAdmin()">退出后台</button>
+        </div>
+        <div class="admin-body">
+            <div class="admin-sidebar">
+                <button class="tab-btn active" onclick="switchTab('tab-time', this)">📅 时间设置</button>
+                <button class="tab-btn" onclick="switchTab('tab-person', this)">👥 人员与自动签到</button>
+                <button class="tab-btn" onclick="switchTab('tab-theme', this)">🎨 外观与素材</button>
+                <button class="tab-btn" onclick="switchTab('tab-ann', this)">📝 公告编辑</button>
+            </div>
+            
+            <div class="admin-content">
+                <div id="tab-time" class="settings-group">
+                    <div class="settings-title">考勤时间段配置</div>
+                    <div id="periodsContainer"></div>
+                </div>
+
+                <div id="tab-person" class="settings-group" style="display:none;">
+                    <div class="settings-title">人员名单管理</div>
+                    <div class="form-row">
+                        <label style="width:120px;">自动签到有效期(天)</label>
+                        <input type="number" class="form-control" id="autoExpireInput" value="7" onchange="config.autoSignExpireDays=parseInt(this.value)">
+                    </div>
+
+                    <p style="font-size:0.9rem; color:#666; margin-bottom: 10px;" id="autoNote">
+                        勾选下方人员，将在考勤开始时<strong>自动签到</strong>（显示为已到），无需手动打卡。
+                    </p>
+                    <div class="check-grid" id="autoSignGrid">
+                    </div>
+                </div>
+
+                <div id="tab-theme" class="settings-group" style="display:none;">
+                    <div class="settings-title">素材导入</div>
+                    
+                    <label>自定义背景图</label>
+                    <div class="file-upload" onclick="document.getElementById('bgInput').click()">
+                        点击上传图片 (建议 < 2MB)
+                        <input type="file" id="bgInput" hidden accept="image/*" onchange="importFile(this, 'customBg')">
+                    </div>
+                    <button class="btn" style="background:#e74c3c; color:white; font-size:0.8rem" onclick="clearStorage('customBg')">清除背景</button>
+
+                    <br><br>
+                    <label>开屏背景图</label>
+                    <div class="file-upload" onclick="document.getElementById('introInput').click()">
+                        点击上传 (覆盖默认黑色背景)
+                        <input type="file" id="introInput" hidden accept="image/*" onchange="importFile(this, 'introBg')">
+                    </div>
+
+                </div>
+
+                <div id="tab-ann" class="settings-group" style="display:none;">
+                    <div class="settings-title">公告编辑</div>
+                    <div class="form-row">
+                        <textarea id="annEditor" class="form-control" style="height:120px; resize:vertical;"></textarea>
+                    </div>
+                    <div style="display:flex; gap:10px; justify-content:flex-end;">
+                        <button class="btn" onclick="loadAnnouncement()">还原本地内容</button>
+                        <button class="btn btn-save" onclick="saveAnnouncement()">保存公告</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* --- 全局数据 --- */
+        const ALL_NAMES = [
+            "陈希萌", "程先民", "冯靖雯", "冯俊皓", "郭晨玮", "郭晨源", 
+            "侯佳霖", "江雨霏", "寇瑾瑄", "李瑞程", "李思涵", "李彦池", 
+            "刘浩宇", "刘思诺", "刘怡君", "刘益豪", "牛军博", "亓娅璇", 
+            "秦国豪", "史继硕", "史峻熙", "司书帆", "孙楚晴", "孙艺涵", 
+            "王俊清", "阎书润", "杨璐羽", "杨镇宇", "张和煦", "张嘉怡", 
+            "张凌硕", "张纳绮", "赵艺洁", "赵子墨"
+        ];
+
+        // 默认配置
+        let config = JSON.parse(localStorage.getItem('attendance_v4_config')) || {
+            periods: [
+                { name: "上午", start: "05:55", end: "06:54" },
+                { name: "中午", start: "12:44", end: "13:45" },
+                { name: "晚上", start: "17:30", end: "18:29" }
+            ],
+            autoSignList: [], // 自动签到的人名列表
+            autoSignExpireDays: 7
+        };
+
+        // 主题预设 (5 种)
+        const THEMES = [
+            {bg: 'linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d)', primary:'#1a2a6c', accent:'#fdbb2d'},
+            {bg: 'linear-gradient(135deg, #0f5b7b, #2b8a7a, #7ad9a2)', primary:'#0f5b7b', accent:'#7ad9a2'},
+            {bg: 'linear-gradient(135deg, #2b5876, #4e4376)', primary:'#2b5876', accent:'#f6c',},
+            {bg: 'linear-gradient(135deg, #232526, #414345)', primary:'#232526', accent:'#9bd'},
+            {bg: 'linear-gradient(135deg, #4b6cb7, #182848)', primary:'#4b6cb7', accent:'#ffd166'}
+        ];
+
+        let themeIndex = parseInt(localStorage.getItem('attendance_theme_index')||'0');
+
+        // 登录用户角色
+        let currentUserRole = null; // 'primary'|'secondary'
+
+        // 状态标记，防止结束画面重复弹出
+        let lastLockedState = false;
+
+        /* --- 核心逻辑 --- */
+        
+        function init() {
+            loadTheme();
+            loadAnnouncement();
+            initGrid();
+            renderSettings();
+            setInterval(tick, 1000);
+            tick();
+        }
+
+        // 加载外观
+        function loadTheme() {
+            const bg = localStorage.getItem('customBg');
+            if(bg) document.body.style.backgroundImage = `url(${bg})`; else document.body.style.backgroundImage = '';
+            document.body.style.background = THEMES[themeIndex].bg || THEMES[0].bg;
+            document.documentElement.style.setProperty('--primary-color', THEMES[themeIndex].primary || '#1a2a6c');
+            document.documentElement.style.setProperty('--accent-color', THEMES[themeIndex].accent || '#fdbb2d');
+            localStorage.setItem('attendance_theme_index', themeIndex);
+            const introBg = localStorage.getItem('introBg');
+            if(introBg) document.getElementById('intro-overlay').style.backgroundImage = `url(${introBg})`;
+        }
+
+        function cycleTheme(){
+            themeIndex = (themeIndex + 1) % THEMES.length;
+            loadTheme();
+        }
+
+        // 存在公告则加载
+        function loadAnnouncement(){
+            const ann = localStorage.getItem('attendance_announcement') || '暂无公告。管理员可在后台编辑此处内容。';
+            document.getElementById('announcementText').innerText = ann;
+            document.getElementById('annEditor') && (document.getElementById('annEditor').value = ann);
+        }
+        function saveAnnouncement(){
+            const text = document.getElementById('annEditor').value || '';
+            localStorage.setItem('attendance_announcement', text);
+            loadAnnouncement();
+            alert('公告已保存');
+        }
+
+        // 初始化/刷新名单网格
+        function initGrid() {
+            const grid = document.getElementById('namesGrid');
+            grid.innerHTML = '';
+            document.getElementById('totalCount').textContent = ALL_NAMES.length;
+            
+            // 更新左侧时间列表
+            const dlList = document.getElementById('deadlineList');
+            dlList.innerHTML = config.periods.map(p => `<div class="deadline-item">${p.name}: ${p.start} - ${p.end}</div>`).join('');
+
+            ALL_NAMES.forEach(name => {
+                const card = document.createElement('div');
+                card.className = 'name-card';
+                card.dataset.name = name;
+                card.dataset.status = 'absent'; // 新增：初始状态
+                card.dataset.checkTime = ''; // 新增：签到时间
+                // 添加自动签到标记
+                const isAuto = config.autoSignList.includes(name);
+                card.innerHTML = `
+                    <span style="font-weight:500">${name}</span>
+                    <span style="font-size: 0.7em; color: #fdbb2d; position:absolute; top:3px; left:3px; opacity: ${isAuto ? 0.7 : 0};">★</span>
+                    <span class="card-icon"></span>
+                `;
+                
+                card.onclick = () => handleCardClick(card);
+                grid.appendChild(card);
+            });
+            updateStats();
+        }
+
+        function handleCardClick(card){
+            if (!isActive()) {
+                // 非考勤时段：不做任何弹窗或大时钟（已移除）
+                return;
+            }
+            // 正常考勤期间的点击
+            if (isLocked()) return; // 锁定后不可点
+            if (card.classList.contains('late')) return; // 迟到状态，不可手动签到
+
+            const now = new Date();
+            const nowTime = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+            if (card.classList.contains('checked')) {
+                // 取消签到
+                card.classList.remove('checked');
+                card.querySelector('.card-icon').textContent = '';
+                card.dataset.status = 'absent'; // 更改状态
+                card.dataset.checkTime = ''; // 清除时间
+            } else {
+                // 签到：变白 + 打钩
+                card.classList.add('checked');
+                card.querySelector('.card-icon').textContent = '✓';
+                card.dataset.status = 'present'; // 更改状态
+                card.dataset.checkTime = nowTime; // 记录时间
+            }
+            updateStats();
+        }
+
+        // 自动签到处理
+        function checkAutoSign() {
+            if (isActive() && !isLocked()) {
+                const cards = document.querySelectorAll('.names-grid .name-card');
+                const now = new Date();
+                const nowTime = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+                cards.forEach(card => {
+                    const name = card.dataset.name;
+                    // 如果在自动签到名单里，且还没签到，且没迟到
+                    if (config.autoSignList.includes(name) && !card.classList.contains('checked') && !card.classList.contains('late')) {
+                        card.classList.add('checked');
+                        card.querySelector('.card-icon').textContent = '✓';
+                        card.dataset.status = 'present'; // 更改状态
+                        card.dataset.checkTime = nowTime; // 记录时间
+                    }
+                });
+                updateStats(); // 实时更新数据
+            }
+        }
+
+        // 时间与状态循环
+        function tick() {
+            const now = new Date();
+            // 1. UI Update
+            document.getElementById('time').innerHTML = 
+                `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+            document.getElementById('date').innerText = now.toLocaleDateString();
+            document.getElementById('weekday').innerText = ['周日','周一','周二','周三','周四','周五','周六'][now.getDay()]; // 转换为中文
+
+            // 2. Logic Check
+            const active = isActive();
+            const locked = isLocked();
+            const statusDiv = document.getElementById('attendanceStatus');
+
+            if (locked) {
+                // 刚进入锁定状态时，触发一次结算，但避免重复结算（包括刷新后）
+                if (!lastLockedState) {
+                    if (!isAlreadyFinalized()) finalizeAttendance();
+                    lastLockedState = true;
+                }
+                statusDiv.textContent = "考勤已结束";
+                statusDiv.style.color = "#fdbb2d";
+            } else if (active) {
+                lastLockedState = false; // 重置状态位
+                checkAutoSign(); // 运行自动签到
+                statusDiv.textContent = `考勤进行中 (${getCurrentPeriodName()})`;
+                statusDiv.style.color = "#2ecc71";
+            } else {
+                // 如果当前状态不是锁定，并且不是考勤中，且上次是锁定状态，则清除迟到状态
+                if (lastLockedState) {
+                    resetAttendance(false); // 仅清除 late 状态
+                }
+                lastLockedState = false;
+                statusDiv.textContent = "等待下一时段";
+                statusDiv.style.color = "white";
+            }
+        }
+
+        function isAlreadyFinalized(){
+            try{
+                const f = JSON.parse(localStorage.getItem('attendance_finalized')||'{}');
+                const now = new Date();
+                const today = now.toISOString().slice(0,10);
+                const period = getCurrentPeriodName();
+                return f.date === today && f.period === period;
+            }catch(e){return false}
+        }
+
+        // 结算逻辑 (弹出结束画面)
+        function finalizeAttendance() {
+            const cards = document.querySelectorAll('.names-grid .name-card');
+            const lateNames = [];
+            
+            cards.forEach(card => {
+                if (!card.classList.contains('checked')) {
+                    // 未签到的全部标记为迟到/缺席
+                    card.classList.add('late');
+                    card.querySelector('.card-icon').textContent = '⚠';
+                    card.dataset.status = 'late'; // 更改状态为迟到
+                    card.dataset.checkTime = '缺席'; // 标记缺席
+                    lateNames.push(card.dataset.name);
+                }
+            });
+            updateStats();
+
+            // 标记为已结算，避免刷新后重复结算
+            try{
+                const now = new Date();
+                const today = now.toISOString().slice(0,10);
+                const period = getCurrentPeriodName();
+                localStorage.setItem('attendance_finalized', JSON.stringify({date: today, period: period}));
+            }catch(e){}
+
+            // 弹出画面
+            const endScreen = document.getElementById('end-screen');
+            const listDiv = document.getElementById('endScreenNames');
+            listDiv.textContent = lateNames.length > 0 ? lateNames.join(', ') : "全员到齐！完美！";
+            endScreen.style.display = 'flex';
+        }
+
+        // 辅助函数
+        function pad(n) { return n < 10 ? '0'+n : n; }
+        function getMins(timeStr) { 
+            if (!timeStr || timeStr.indexOf(':') === -1) return -1;
+            const [h, m] = timeStr.split(':'); 
+            return parseInt(h) * 60 + parseInt(m); 
+        }
+        
+        function isActive() {
+            const now = new Date();
+            const cur = now.getHours() * 60 + now.getMinutes();
+            return config.periods.some(p => {
+                const startMins = getMins(p.start);
+                const endMins = getMins(p.end);
+                return startMins !== -1 && endMins !== -1 && cur >= startMins && cur <= endMins;
+            });
+        }
+        
+        function isLocked() {
+            const now = new Date();
+            const cur = now.getHours() * 60 + now.getMinutes();
+            // 结束后30分钟内视为锁定（显示结算），之后恢复普通等待
+            return config.periods.some(p => {
+                const endMins = getMins(p.end);
+                return endMins !== -1 && cur > endMins && cur <= endMins + 30;
+            });
+        }
+
+        function getCurrentPeriodName() {
+            const now = new Date();
+            const cur = now.getHours() * 60 + now.getMinutes();
+            const p = config.periods.find(p => cur >= getMins(p.start) && cur <= getMins(p.end));
+            return p ? p.name : '';
+        }
+
+        function getNextPeriod(){
+            const now = new Date();
+            const cur = now.getHours()*60 + now.getMinutes();
+            const future = config.periods.filter(p=> getMins(p.start) > cur).sort((a,b)=> getMins(a.start)-getMins(b.start));
+            return future.length? future[0] : null;
+        }
+
+        function updateStats() {
+            const checked = document.querySelectorAll('.names-grid .name-card.checked').length;
+            const late = document.querySelectorAll('.names-grid .name-card.late').length;
+            document.getElementById('presentCount').textContent = checked;
+            document.getElementById('lateCount').textContent = late;
+        }
+
+        /**
+         * 重置考勤状态
+         * @param {boolean} fullReset - 是否完全重置 (清除 checked 和 late)，否则只清除 late 状态
+         */
+        function resetAttendance(fullReset = true) {
+            if (isLocked() && fullReset) { alert('当前处于结束结算时段，无法重置'); return; }
+            
+            document.querySelectorAll('.names-grid .name-card').forEach(c => {
+                if (fullReset) {
+                    // 完全重置（按钮点击）
+                    c.className = 'name-card';
+                    c.dataset.status = 'absent';
+                    c.dataset.checkTime = '';
+                } else {
+                    // 非完全重置（时间段结束自动清除）
+                    c.classList.remove('late');
+                    if (c.dataset.status === 'late') {
+                        c.dataset.status = 'absent'; // 清除 late 状态后，未签到的应恢复 absent
+                        c.dataset.checkTime = '';
+                    }
+                }
+                c.querySelector('.card-icon').textContent = '';
+                
+                // 确保自动签到的人在重置后如果 autoSignList 中还有名字，不会马上清除 checked
+                if (config.autoSignList.includes(c.dataset.name) && isActive() && !isLocked()) {
+                    const now = new Date();
+                    c.classList.add('checked');
+                    c.querySelector('.card-icon').textContent = '✓';
+                    c.dataset.status = 'present';
+                    c.dataset.checkTime = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+                }
+            });
+            updateStats();
+            // 如果是完全重置则清除已结算标记
+            if(fullReset) localStorage.removeItem('attendance_finalized');
+        }
+        
+        /* --- 新增: 全屏模式逻辑 (未在 footer 中添加按钮，仅保留函数) --- */
+        function toggleFullscreen() {
+            const grid = document.getElementById('namesGrid');
+            const button = event.target;
+            
+            grid.classList.toggle('fullscreen-mode');
+            
+            if (grid.classList.contains('fullscreen-mode')) {
+                // 进入全屏逻辑 (仅影响网格样式，非浏览器原生全屏)
+                button.textContent = "退出全屏";
+            } else {
+                button.textContent = "全屏模式";
+            }
+        }
+
+        /* --- 新增: 考勤名单报表 (精确到秒) --- */
+        function openAttendanceReport() {
+            const cards = Array.from(document.querySelectorAll('.names-grid .name-card'));
+            const reportData = cards.map(card => ({
+                name: card.dataset.name,
+                status: card.dataset.status, // 'present', 'late', 'absent'
+                checkTime: card.dataset.checkTime 
+            }));
+
+            // 格式化当前时间
+            const now = new Date();
+            const currentDateTime = now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' + 
+                                  now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            
+            let tableRows = '';
+            reportData.sort((a, b) => {
+                if (a.status === 'late' && b.status !== 'late') return -1;
+                if (a.status !== 'late' && b.status === 'late') return 1;
+                return a.name.localeCompare(b.name, 'zh-CN');
+            }).forEach(item => {
+                let statusText = '';
+                let timeCell = item.checkTime;
+                let rowClass = '';
+
+                if (item.status === 'present') {
+                    statusText = '已到 (✓)';
+                } else if (item.status === 'late') {
+                    statusText = '迟到 (⚠)';
+                    rowClass = 'late-row';
+                    timeCell = item.checkTime === '缺席' ? '缺席/未到' : item.checkTime;
+                } else {
+                    statusText = '未到/缺席';
+                    rowClass = 'late-row';
+                    timeCell = '未签';
+                }
+
+                tableRows += `
+                    <tr class="${rowClass}">
+                        <td>${item.name}</td>
+                        <td>${statusText}</td>
+                        <td>${timeCell}</td>
+                    </tr>
+                `;
+            });
+
+            // HTML for the new window
+            const reportHTML = `
+                <html>
+                <head>
+                    <title>考勤名单报表 - ${currentDateTime}</title>
+                    <style>
+                        /* 复制 report-body 和 table 的样式到新窗口 */
+                        .report-body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; padding: 20px; background-color: #f8f9fa; color: #333; }
+                        .report-title { color: #1a2a6c; border-bottom: 3px solid #fdbb2d; padding-bottom: 10px; margin-bottom: 20px; }
+                        .report-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        .report-table th, .report-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+                        .report-table th { background-color: #e9ecef; color: #1a2a6c; font-weight: bold; }
+                        .late-row { background-color: #fdd; }
+                        @media print { .no-print { display: none; } }
+                    </style>
+                </head>
+                <body class="report-body">
+                    <h1 class="report-title">📝 班级考勤报表</h1>
+                    <p><strong>统计时间:</strong> ${currentDateTime}</p>
+                    <p><strong>考勤时段:</strong> ${getCurrentPeriodName() || '非考勤时段'}</p>
+                    <button class="no-print" onclick="window.print()" style="margin-top: 15px; padding: 10px 20px; background: #1a2a6c; color: white; border: none; border-radius: 5px; cursor: pointer;">打印报表</button>
+
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%;">姓名</th>
+                                <th style="width: 30%;">状态</th>
+                                <th style="width: 40%;">签到时间/缺席标记 (精确到秒)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            // 打开新标签页并写入内容
+            const reportWindow = window.open('', '_blank');
+            reportWindow.document.write(reportHTML);
+            reportWindow.document.close();
+        }
+
+        /* --- 后台管理逻辑 --- */
+        
+        function handleLogin() {
+            const u = document.getElementById('uName').value.trim();
+            const p = document.getElementById('pWord').value;
+            // 主管理员：xiaoran / lingyi79398
+            if(u === 'xiaoran' && p === 'lingyi79398'){
+                currentUserRole = 'primary';
+                document.getElementById('loginModal').style.display='none';
+                document.getElementById('admin-page').style.display='flex';
+                renderSettings();
+                applyRoleVisibility();
+                return;
+            }
+            // 次要管理员：liqi / liqi123123
+            if(u === 'liqi' && p === 'liqi123123'){
+                currentUserRole = 'secondary';
+                document.getElementById('loginModal').style.display='none';
+                document.getElementById('admin-page').style.display='flex';
+                renderSettings();
+                applyRoleVisibility();
+                return;
+            }
+            alert('用户名或密码错误！');
+        }
+
+        function applyRoleVisibility(){
+            // 次要管理员不显示“人员与自动签到”整个板块
+            if(currentUserRole === 'secondary'){
+                const tabBtn = [...document.querySelectorAll('.admin-sidebar .tab-btn')].find(b=>b.textContent.includes('人员与自动签到'));
+                if(tabBtn) tabBtn.style.display = 'none';
+                const tab = document.getElementById('tab-person');
+                if(tab) tab.style.display = 'none';
+            } else {
+                const tabBtn = [...document.querySelectorAll('.admin-sidebar .tab-btn')].find(b=>b.textContent.includes('人员与自动签到'));
+                if(tabBtn) tabBtn.style.display = 'block';
+                const tab = document.getElementById('tab-person');
+                if(tab) tab.style.display = 'block';
+            }
+        }
+
+        function closeAdmin() {
+            document.getElementById('admin-page').style.display='none';
+            // 保存配置
+            saveConfig(); 
+            initGrid(); // 刷新主界面
+        }
+
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.settings-group').forEach(g => g.style.display='none');
+            document.getElementById(tabId).style.display='block';
+            document.querySelectorAll('.admin-sidebar .tab-btn').forEach(b => b.classList.remove('active'));
+            element.classList.add('active');
+        }
+
+        function renderSettings() {
+            // 1. 时间
+            const pCon = document.getElementById('periodsContainer');
+            pCon.innerHTML = '';
+            config.periods.forEach((p, idx) => {
+                pCon.innerHTML += `
+                    <div class="form-row" id="period-row-${idx}">
+                        <input type="text" value="${p.name}" class="form-control" onchange="config.periods[${idx}].name=this.value">
+                        <input type="time" value="${p.start}" class="form-control" onchange="updatePeriodTime(${idx}, 'start', this.value)">
+                        <span>至</span>
+                        <input type="time" value="${p.end}" class="form-control" onchange="updatePeriodTime(${idx}, 'end', this.value)">
+                        <button class="btn" style="background:#e74c3c; color:white; padding:8px 10px; flex-shrink: 0;" onclick="removePeriod(${idx})">移除</button>
+                    </div>
+                `;
+            });
+            // 添加新增时间段按钮
+            pCon.innerHTML += `
+                <div class="form-row" style="justify-content:center; margin-top: 15px;">
+                    <button class="btn btn-save" onclick="addPeriod()">+ 新增时间段</button>
+                </div>
+            `;
+
+            // 2. 自动签到勾选
+            const autoGrid = document.getElementById('autoSignGrid');
+            autoGrid.innerHTML = '';
+            ALL_NAMES.forEach(name => {
+                const isAuto = config.autoSignList.includes(name);
+                autoGrid.innerHTML += `
+                    <label class="check-item">
+                        <input type="checkbox" ${isAuto ? 'checked' : ''} onchange="toggleAutoSign('${name}', this.checked)">
+                        ${name}
+                    </label>
+                `;
+            });
+
+            // 根据当前用户角色调整可见性
+            applyRoleVisibility();
+        }
+        
+        function addPeriod() {
+            config.periods.push({ name: "新时段", start: "00:00", end: "00:30" });
+            renderSettings(); // 重新渲染配置界面
+        }
+
+        function removePeriod(index) {
+            if (config.periods.length <= 1) {
+                alert('至少需要保留一个考勤时段。');
+                return;
+            }
+            config.periods.splice(index, 1);
+            renderSettings(); // 重新渲染配置界面
+        }
+
+        // 时间输入校验
+        function updatePeriodTime(index, key, value) {
+            // 简单的 HH:MM 格式校验
+            if (/^\d{2}:\d{2}$/.test(value) && getMins(value) !== -1) {
+                config.periods[index][key] = value;
+            } else {
+                alert('时间格式错误，必须是 HH:MM (例如 18:30)');
+            }
+        }
+
+        function toggleAutoSign(name, checked) {
+            if(currentUserRole === 'secondary') return; // secondary 无权限修改
+            if(checked) {
+                if(!config.autoSignList.includes(name)) config.autoSignList.push(name);
+            } else {
+                config.autoSignList = config.autoSignList.filter(n => n !== name);
+            }
+        }
+
+        function saveConfig() {
+            localStorage.setItem('attendance_v4_config', JSON.stringify(config));
+        }
+
+        /* --- 素材导入 (Base64) --- */
+        function importFile(input, key) {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    localStorage.setItem(key, e.target.result);
+                    alert('导入成功！');
+                    loadTheme();
+                } catch(err) {
+                    alert('图片太大了，无法保存！请使用小于 2MB 的图片。');
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearStorage(key) {
+            localStorage.removeItem(key);
+            location.reload();
+        }
+
+        // Run
+        init();
+
+    </script>
+</body>
+</html>
